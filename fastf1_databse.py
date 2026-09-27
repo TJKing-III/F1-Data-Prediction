@@ -74,7 +74,7 @@ if inspector.has_table(table_name):
         print(f"✓ Found {len(existing_races)} races already in database.")
 
     except Exception as e:
-        print(f"⚠️ Could not read existing database data: {e}")
+        print(f" Could not read existing database data: {e}")
 
 print()
 
@@ -118,7 +118,7 @@ for year in range(2021, 2027):
         except fastf1.exceptions.RateLimitExceededError:
 
             print(
-                "🚨 FastF1 rate limit reached while getting schedule."
+                " FastF1 rate limit reached while getting schedule."
             )
 
             if schedule_attempts < max_schedule_attempts:
@@ -128,7 +128,7 @@ for year in range(2021, 2027):
         except Exception as e:
 
             print(
-                f"❌ Could not load {year} schedule."
+                f" Could not load {year} schedule."
             )
             print(
                 f"   {type(e).__name__}: {e}"
@@ -136,7 +136,7 @@ for year in range(2021, 2027):
             break
 
     if schedule is None:
-        print(f"⚠️ Skipping entire {year} season.")
+        print(f" Skipping entire {year} season.")
         continue
 
 
@@ -226,7 +226,7 @@ for year in range(2021, 2027):
                 if clean_laps.empty:
 
                     print(
-                        f"⚠️ No clean laps found for "
+                        f" No clean laps found for "
                         f"{year} {race_name}."
                     )
 
@@ -376,7 +376,7 @@ for year in range(2021, 2027):
                 if not race_data:
 
                     print(
-                        f"⚠️ No driver data generated "
+                        f" No driver data generated "
                         f"for {year} {race_name}."
                     )
 
@@ -386,7 +386,7 @@ for year in range(2021, 2027):
                 race_df = pd.DataFrame(race_data)
 
                 print(
-                    f"💾 Saving {len(race_df)} drivers "
+                    f"Saving {len(race_df)} drivers "
                     f"to database..."
                 )
 
@@ -434,7 +434,7 @@ for year in range(2021, 2027):
                 else:
 
                     print(
-                        "❌ Maximum retry attempts reached."
+                        " Maximum retry attempts reached."
                     )
 
 
@@ -446,7 +446,7 @@ for year in range(2021, 2027):
 
                 print()
                 print(
-                    f"❌ ERROR downloading "
+                    f"ERROR downloading "
                     f"{year} {race_name}"
                 )
 
@@ -472,7 +472,7 @@ for year in range(2021, 2027):
             failed_races += 1
 
             print(
-                f"⚠️ Failed to download "
+                f"Failed to download "
                 f"{year} {race_name}."
             )
 
