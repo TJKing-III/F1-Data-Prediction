@@ -1,6 +1,5 @@
 from urllib.request import urlopen
-import json
-import fastf1
+import json, fastf1
 import pandas as pd
 
 fastf1.Cache.enable_cache('cache')
@@ -25,13 +24,13 @@ def amount_of_races(gp_name):
     print(f"Total  {gp_name}  Grand Prixs found: {total_count}")
     return(total_count, years_array)
 
-def race_data(name):
-    counts = amount_of_races(name)
-    for year in years:
-        try:    
-            session = fastf1.get_session(year, name, 'Race') 
+def load_race_results(gp_name, years_array):
+    results_by_year = {}
+    for year in years_array:
+        try:
+            session = fastf1.get_session(year, gp_name, 'R')
+            session.load()
+            results_by_year[year] = session.results
         except Exception as e:
-            print(f"Could not fetch data for {year}: {e}")
-
-
-   
+            print(f"Error could not fetch race data for {gp_name} for year {year}")
+    return results_by_year
