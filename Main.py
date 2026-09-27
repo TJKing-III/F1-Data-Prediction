@@ -63,12 +63,45 @@ def driver_historical_performance(driver, year, result_by_year):
     driver_races = len(positions)
     return average_driver_pos, driver_races
 
+def power_proxy(gp_name, year):
+    try:
+        quali = fastf1.get_event_session(gp_name, year,'Q')
+        quali.load()
+        return quali.laps.groupby("Abbreviation")['SpeedST'].max().to_dict()
+    except Exception as e:
+        print(f"Error no data could be found for power proxy")
+
+def current_standings(year):
+    schedule = fastf1.get_event_schedule(year)
+    races_only = schedule[schedule['EventFormat'] != 'Testing'].sort_values('RoundNumber')
+
+    running_totals = {}
+    standings_by_round = {}
+
+    for _, race in races_only.iterrows():
+        rnd = race['RoundNumber']
+        try:
+            session = fastf1.get_session(year, rnd, 'Race')
+            session.load()
+            for _, row in session.results.iterrows():
+                team = row['TeamName']
+                points = row['Points'] if pd.notna(row['Points']) else 0
+                running_totals[team] = running_totals.get(team, 0) + points
+        except Exception as e:
+            print(f"Could not fetch {year} round {rnd}: {e}")
+        standings_by_round[rnd] = dict(running_totals)
+
+    return standings_by_round
 
 
 
+
+print(current_standings(2026))
 schedule = fastf1.get_event_schedule(2025)
 for i in schedule['Country']:
     print(i)
+
+
 '''
 rby = load_race_results("Bahrain", amount_of_races("bahrain")[1])
 ap, tr =team_historical_performance("Red Bull Racing", 2025, rby)
