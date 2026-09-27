@@ -1,7 +1,12 @@
 from urllib.request import urlopen
 import json, fastf1
 import pandas as pd
+import os
 
+try:
+    os.makedirs('cache', exist_ok=True)
+except Exception as e:
+    print(f"Cache already made")
 fastf1.Cache.enable_cache('cache')
 
 years = range(2021,2027)
@@ -34,3 +39,7 @@ def load_race_results(gp_name, years_array):
         except Exception as e:
             print(f"Error could not fetch race data for {gp_name} for year {year}")
     return results_by_year
+
+
+x = amount_of_races("Bahrain")
+print(x[1])
