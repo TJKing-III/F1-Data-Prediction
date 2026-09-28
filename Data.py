@@ -55,7 +55,7 @@ def team_historical_performance(team, year, results_by_year):
 def driver_historical_performance(driver, year, result_by_year):
     positions = []
     for past_year, results in result_by_year.items():
-        if past_year > year:
+        if past_year >= year:
             continue
         driver_row = results[results['Abbreviation'].str.contains(driver, case=False, na=False)]
         positions.extend(pd.to_numeric(driver_row['Position'], errors='coerce').dropna().tolist())
@@ -65,11 +65,12 @@ def driver_historical_performance(driver, year, result_by_year):
 
 def power_proxy(gp_name, year):
     try:
-        quali = fastf1.get_event_session(gp_name, year,'Q')
+        quali = fastf1.get_session(gp_name, year,'Q')
         quali.load()
-        return quali.laps.groupby("Abbreviation")['SpeedST'].max().to_dict()
+        return quali.laps.groupby("Driver")['SpeedST'].max().to_dict()
     except Exception as e:
         print(f"Error no data could be found for power proxy")
+        return {}
 
 def current_standings(year):
     schedule = fastf1.get_event_schedule(year)
@@ -93,68 +94,46 @@ def current_standings(year):
 
     return running_totals
 
-def build_data():
-    results_by_location = {}
-    events = []
-    for year in years:
+def race_data(gp_name):
+    years_array = sorted(set(amount_of_races(gp_name)[1]))
+    results_by_year = load_race_results(gp_name, years_array)
+ 
+    rows = []
+    for year, results in results_by_year.items():
         try:
-            schedule = fastf1.get_event_schedule(year)
-            races_only = schedule[schedule['EventFormat'] != 'testing'].sort_values('RoundNumber')
+            event = fastf1.get_session(year, gp_name, 'R').event
         except Exception as e:
-            print(f"Could not fetch schedule for {year}: {e}")
+            print(f"Could not get event info for {gp_name} {year}: {e}")
             continue
-        running_points = {}
-        for _, event in races_only.iterrows():
-            if pd.to_datetime(event['EventDate']).tz_localize(None) >= pd.Timestamp.now():
-                continue
  
-            try:
-                session = fastf1.get_session(year, event['RoundNumber'], 'Race')
-                session.load()
-            except Exception as e:
-                print(f"Could not fetch {year} round {event['RoundNumber']}: {e}")
-                continue
- 
-            location = event['Location']
-            results_by_location.setdefault(location, {})[year] = session.results
-            events.append({
-                'year': year,
-                'round': event['RoundNumber'],
-                'gp': event['EventName'],
-                'location': location,
-                'standings_before': dict(running_points),
-            })
- 
-            for _, row in session.results.iterrows():
-                points = row['Points'] if pd.notna(row['Points']) else 0
-                running_points[row['TeamName']] = running_points.get(row['TeamName'], 0) + points
- 
-    all_rows = []
-    for ev in events:
-        year, rnd, gp_name, location = ev['year'], ev['round'], ev['gp'], ev['location']
-        results = results_by_location[location][year]
- 
-        speed_by_driver = power_proxy_by_round(year, rnd)
-        standings_before = ev['standings_before']
+        speed = power_proxy(gp_name, year)
+        standings = current_standings(year).get(event['RoundNumber'], {})
  
         for _, row in results.iterrows():
-            driver = row['Abbreviation']
-            team = row['TeamName']
-            team_hist = team_historical_performance(team, year, results_by_location[location])
-            all_rows.append({
-                'year': year,
-                'gp': gp_name,
-                'location': location,
-                'driver': driver,
-                'team': team,
-                'grid_position': row['GridPosition'],
-                'finish_position': row['Position'],
-                'team_avg_finish_at_gp': team_hist['team_avg_finish_at_gp'],
-                'team_races_at_gp': team_hist['team_races_at_gp'],
-                'team_points_before_race': standings_before.get(team, None),
-                'speed_trap_max': speed_by_driver.get(driver, None),
+            driver, team = row['Abbreviation'], row['TeamName']
+            team_avg, team_races = team_historical_performance(team, year, results_by_year)
+            driver_avg, driver_races = driver_historical_performance(driver, year, results_by_year)
+            rows.append({
+                'year': year, 'round': event['RoundNumber'], 'gp': gp_name,
+                'location': event['Location'], 'driver': driver, 'team': team,
+                'grid_position': row['GridPosition'], 'finish_position': row['Position'],
+                'points': row['Points'],
+                'team_avg_finish_at_gp': team_avg, 'team_races_at_gp': team_races,
+                'driver_avg_finish_at_gp': driver_avg, 'driver_races_at_gp': driver_races,
+                'team_points_before_race': standings.get(team),
+                'speed_trap_max': speed.get(driver),
             })
-            
-    return pd.DataFrame(all_rows)
+ 
+    return pd.DataFrame(rows)
 
-print(build_data())
+def build_dataset(gp_names):
+    return pd.concat([race_data(gp) for gp in gp_names], ignore_index=True)
+
+
+schedule = fastf1.get_event_schedule(2025)
+gp_list = schedule[schedule['EventFormat'] != 'testing']['EventName'].tolist()
+ 
+df = build_dataset(gp_list)
+print(df)
+df.to_csv('full_training_data.csv', index=False)
+
